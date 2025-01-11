@@ -30,7 +30,7 @@ export function factory({ events }) {
   
   const newFilters = events.map(({ event }) => {
     if (event.data) {
-      const canvasAddress = event.data[1];
+      const canvasAddress = event.data[0];
       deployedCanvases.push({
         event_type: "canvas_created",
         canvas_id: event.data[0],
@@ -41,7 +41,7 @@ export function factory({ events }) {
       return [
         {
           fromAddress: canvasAddress,
-          keys: [hash.getSelectorFromName("ColorAdded")],
+          keys: ["0x0004a301e4d01f413a1d4d0460c4ba976e23392f49126d90f5bd45de7dd7dbeb"],
         },
         {
           fromAddress: canvasAddress,
@@ -57,7 +57,7 @@ export function factory({ events }) {
         },
         {
           fromAddress: canvasAddress,
-          keys: [hash.getSelectorFromName("HostAwardedUser")],
+          keys: ["0x03cab98018a5e38e0cf717d8bed481983eb400f6a1d9ccd34f87050c0f36a32a"],
         },
         {
           fromAddress: canvasAddress,
@@ -79,7 +79,9 @@ export function factory({ events }) {
       header: { weak: true },
       events: newFilters
     } : null,
-    data: deployedCanvases
+    data: deployedCanvases,
+    sinkType: "console",
+    sinkOptions: {}
   };
 }
 
@@ -130,7 +132,7 @@ export default function transform({ events }) {
       };
     }
 
-    if (eventKey === hash.getSelectorFromName("ColorAdded")) {
+    if (eventKey === "0x0004a301e4d01f413a1d4d0460c4ba976e23392f49126d90f5bd45de7dd7dbeb") {
       return {
         event_type: "color_added",
         canvas_address: event.fromAddress,
@@ -145,6 +147,40 @@ export default function transform({ events }) {
         canvas_address: event.fromAddress,
         placed_by: event.data[0],
         timestamp: event.data[1]
+      };
+    }
+
+    if (eventKey === "0x03cab98018a5e38e0cf717d8bed481983eb400f6a1d9ccd34f87050c0f36a32a") {
+      return {
+        event_type: "host_awarded_user",
+        canvas_address: event.fromAddress,
+        user: event.data[0],
+        amount: event.data[1]
+      };
+    }
+
+    if (eventKey === hash.getSelectorFromName("ExtraPixelsPlaced")) {
+      return {
+        event_type: "extra_pixels_placed",
+        canvas_address: event.fromAddress,
+        placed_by: event.data[0],
+        timestamp: event.data[1]
+      };
+    }
+
+    if (eventKey === hash.getSelectorFromName("CanvasStarted")) {
+      return {
+        event_type: "canvas_started",
+        canvas_address: event.fromAddress,
+        timestamp: event.data[0]
+      };
+    }
+
+    if (eventKey === hash.getSelectorFromName("CanvasEnded")) {
+      return {
+        event_type: "canvas_ended",
+        canvas_address: event.fromAddress,
+        timestamp: event.data[0]
       };
     }
 
