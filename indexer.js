@@ -25,8 +25,6 @@ export function factory({ events }) {
     return {};
   }
 
-  console.log("Factory: Processing events:", JSON.stringify(events, null, 2));
-
   // Track deployed canvases for the integration
   const deployedCanvases = [];
   
@@ -50,8 +48,6 @@ export function factory({ events }) {
     };
   });
 
-  console.log("Factory: Adding filters for new canvases:", JSON.stringify(newFilters, null, 2));
-
   return {
     // Return new filters to be merged with existing ones
     filter: {
@@ -65,13 +61,6 @@ export function factory({ events }) {
 
 // Transform function to handle events from both factory and canvases
 export default function transform({ events }) {
-  if (!events || events.length === 0) {
-    console.log("Transform: No events to process");
-    return [];
-  }
-
-  console.log("Transform: Processing events:", JSON.stringify(events, null, 2));
-
   return events.map(({ event }) => {
     const eventKey = hash.getSelector(event.keys[0]);
     
