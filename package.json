@@ -1,0 +1,14 @@
+{
+  "name": "supreme-indexer",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "apibara run indexer.js -A dna_yOJNPT5J6UGb997907vj --allow-net",
+    "test": "apibara test indexer.js -A dna_yOJNPT5J6UGb997907vj"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {}
+}
