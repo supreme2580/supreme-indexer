@@ -11,6 +11,10 @@ export const config = {
       {
         fromAddress: "0x02b99858efd4ba5240de2f1f54880878f135be8b5cc4eeedc4a72fbd6e7fc892",
         keys: [hash.getSelectorFromName("CanvasCreated")],
+      },
+      {
+        fromAddress: "0x02b99858efd4ba5240de2f1f54880878f135be8b5cc4eeedc4a72fbd6e7fc892",
+        keys: [hash.getSelectorFromName("CanvasFavorited")],
       }
     ],
   },
@@ -20,41 +24,37 @@ export const config = {
 
 // Factory function to handle new canvas deployments
 export function factory({ events }) {
-  if (!events || events.length === 0) {
-    console.log("Factory: No events to process");
-    return {};
-  }
-
   // Track deployed canvases for the integration
   const deployedCanvases = [];
   
   // Create filters for new canvases
   const newFilters = events.map(({ event }) => {
-    const canvasAddress = event.data[1];
-    deployedCanvases.push({
-      canvas_id: event.data[0],
-      canvas_address: canvasAddress,
-      init_params: event.data[2]
-    });
-
-    return {
-      fromAddress: canvasAddress,
-      keys: [
-        hash.getSelectorFromName("PixelPlaced"),
-        hash.getSelectorFromName("ColorAdded"),
-        hash.getSelectorFromName("CanvasStarted"),
-        hash.getSelectorFromName("CanvasEnded")
-      ]
-    };
-  });
+    if (event.data) {
+      const canvasAddress = event.data[1];
+      deployedCanvases.push({
+        canvas_id: event.data[0],
+        canvas_address: canvasAddress,
+        init_params: event.data[2]
+      });
+  
+      return {
+        fromAddress: canvasAddress,
+        keys: [
+          hash.getSelectorFromName("PixelPlaced"),
+          hash.getSelectorFromName("ColorAdded"),
+          hash.getSelectorFromName("CanvasStarted"),
+          hash.getSelectorFromName("CanvasEnded")
+        ]
+      };
+    }
+    return null;
+  }).filter(filter => filter !== null); // Remove any null entries
 
   return {
-    // Return new filters to be merged with existing ones
     filter: {
       header: { weak: true },
       events: newFilters
     },
-    // Pass deployed canvas info to the integration
     data: deployedCanvases
   };
 }
