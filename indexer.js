@@ -1,6 +1,5 @@
 import { hash } from "https://esm.run/starknet@5.14";
 
-// Configuration for the factory indexer - this will only watch the factory contract
 export const config = {
   streamUrl: "https://sepolia.starknet.a5a.ch",
   startingBlock: 444_932,
@@ -15,6 +14,10 @@ export const config = {
       {
         fromAddress: "0x02b99858efd4ba5240de2f1f54880878f135be8b5cc4eeedc4a72fbd6e7fc892",
         keys: [hash.getSelectorFromName("CanvasFavorited")],
+      },
+      {
+        fromAddress: "0x02b99858efd4ba5240de2f1f54880878f135be8b5cc4eeedc4a72fbd6e7fc892",
+        keys: [hash.getSelectorFromName("CanvasUnfavorited")],
       }
     ],
   },
@@ -22,49 +25,76 @@ export const config = {
   sinkOptions: {},
 };
 
-// Factory function to handle new canvas deployments
 export function factory({ events }) {
-  // Track deployed canvases for the integration
   const deployedCanvases = [];
   
-  // Create filters for new canvases
   const newFilters = events.map(({ event }) => {
     if (event.data) {
       const canvasAddress = event.data[1];
       deployedCanvases.push({
+        event_type: "canvas_created",
         canvas_id: event.data[0],
         canvas_address: canvasAddress,
         init_params: event.data[2]
       });
   
-      return {
-        fromAddress: canvasAddress,
-        keys: [
-          hash.getSelectorFromName("PixelPlaced"),
-          hash.getSelectorFromName("ColorAdded"),
-          hash.getSelectorFromName("CanvasStarted"),
-          hash.getSelectorFromName("CanvasEnded")
-        ]
-      };
+      return [
+        {
+          fromAddress: canvasAddress,
+          keys: [hash.getSelectorFromName("ColorAdded")],
+        },
+        {
+          fromAddress: canvasAddress,
+          keys: [hash.getSelectorFromName("PixelPlaced")],
+        },
+        {
+          fromAddress: canvasAddress,
+          keys: [hash.getSelectorFromName("BasicPixelPlaced")],
+        },
+        {
+          fromAddress: canvasAddress,
+          keys: [hash.getSelectorFromName("ExtraPixelsPlaced")],
+        },
+        {
+          fromAddress: canvasAddress,
+          keys: [hash.getSelectorFromName("HostAwardedUser")],
+        },
+        {
+          fromAddress: canvasAddress,
+          keys: [hash.getSelectorFromName("CanvasStarted")],
+        },
+        {
+          fromAddress: canvasAddress,
+          keys: [hash.getSelectorFromName("CanvasEnded")],
+        }
+      ];
     }
     return null;
-  }).filter(filter => filter !== null); // Remove any null entries
+  })
+  .filter(filters => filters !== null)
+  .flat();
 
   return {
-    filter: {
+    filter: newFilters.length > 0 ? {
       header: { weak: true },
       events: newFilters
-    },
+    } : null,
     data: deployedCanvases
   };
 }
 
-// Transform function to handle events from both factory and canvases
 export default function transform({ events }) {
+  if (!events || events.length === 0) {
+    return [];
+  }
+
   return events.map(({ event }) => {
+    if (!event || !event.keys || event.keys.length === 0) {
+      return null;
+    }
+
     const eventKey = hash.getSelector(event.keys[0]);
     
-    // Handle CanvasCreated events from factory
     if (eventKey === hash.getSelectorFromName("CanvasCreated")) {
       return {
         event_type: "canvas_created",
@@ -73,19 +103,33 @@ export default function transform({ events }) {
         init_params: event.data[2]
       };
     }
+
+    if (eventKey === hash.getSelectorFromName("CanvasFavorited")) {
+      return {
+        event_type: "canvas_favorited",
+        canvas_id: event.data[0],
+        user: event.data[1]
+      };
+    }
+
+    if (eventKey === hash.getSelectorFromName("CanvasUnfavorited")) {
+      return {
+        event_type: "canvas_unfavorited",
+        canvas_id: event.data[0],
+        user: event.data[1]
+      };
+    }
     
-    // Handle PixelPlaced events from canvases
     if (eventKey === hash.getSelectorFromName("PixelPlaced")) {
       return {
         event_type: "pixel_placed",
         canvas_address: event.fromAddress,
-        position: event.data[0],
-        color: event.data[1],
-        user: event.data[2]
+        placed_by: event.data[0],
+        position: event.data[1],
+        color: event.data[2]
       };
     }
 
-    // Handle ColorAdded events
     if (eventKey === hash.getSelectorFromName("ColorAdded")) {
       return {
         event_type: "color_added",
@@ -95,25 +139,15 @@ export default function transform({ events }) {
       };
     }
 
-    // Handle CanvasStarted events
-    if (eventKey === hash.getSelectorFromName("CanvasStarted")) {
+    if (eventKey === hash.getSelectorFromName("BasicPixelPlaced")) {
       return {
-        event_type: "canvas_started",
+        event_type: "basic_pixel_placed",
         canvas_address: event.fromAddress,
-        timestamp: event.data[0]
+        placed_by: event.data[0],
+        timestamp: event.data[1]
       };
     }
 
-    // Handle CanvasEnded events
-    if (eventKey === hash.getSelectorFromName("CanvasEnded")) {
-      return {
-        event_type: "canvas_ended",
-        canvas_address: event.fromAddress,
-        timestamp: event.data[0]
-      };
-    }
-
-    // Return unknown events with full details for debugging
     return {
       event_type: "unknown",
       event_key: eventKey,
@@ -121,5 +155,5 @@ export default function transform({ events }) {
       keys: event.keys,
       data: event.data
     };
-  });
+  }).filter(event => event !== null);
 }
